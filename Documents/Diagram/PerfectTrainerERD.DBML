@@ -1,0 +1,142 @@
+Table users {
+  user_id integer [primary key]
+  user_type varchar [note: 'trainer, gym, trainee, admin']
+  email varchar [unique, not null]
+  password_hash varchar [not null]
+  first_name varchar
+  last_name varchar
+  phone varchar
+  date_of_birth date
+  height decimal
+  weight decimal
+  profile_photo_url varchar
+  bio text
+  specialty varchar [note: 'for trainers']
+  hourly_rate decimal [note: 'for trainers']
+  is_verified boolean [default: false]
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table credentials {
+  credential_id integer [primary key]
+  user_id integer [ref: > users.user_id]
+  credential_name varchar
+  credential_giver varchar
+  date_achieved date
+  expiration_date date
+  verification_status varchar [note: 'pending, verified, expired']
+  credential_file_url varchar
+}
+
+Table trainer_applications {
+  application_id integer [primary key]
+  applicant_email varchar [not null]
+  first_name varchar
+  last_name varchar
+  phone varchar
+  experience_years integer
+  specializations text
+  certifications_summary text
+  why_join_us text
+  resume_url varchar
+  portfolio_url varchar
+  availability text
+  expected_hourly_rate decimal
+  application_status varchar [note: 'pending, under_review, approved, rejected']
+  admin_notes text
+  applied_at timestamp [default: `now()`]
+  reviewed_at timestamp
+  reviewed_by integer [ref: > users.user_id]
+}
+
+Table trainer_application_documents {
+  document_id integer [primary key]
+  application_id integer [ref: > trainer_applications.application_id]
+  document_type varchar [note: 'resume, certification, insurance, references']
+  document_name varchar
+  document_url varchar
+  uploaded_at timestamp [default: `now()`]
+}
+
+Table job_types {
+  job_type_id integer [primary key]
+  type_name varchar [note: 'training_session, find_gym_buddy, diet_plan, group_training, nutrition_consultation']
+  description text
+}
+
+Table jobs {
+  job_id integer [primary key]
+  poster_id integer [ref: > users.user_id]
+  job_type_id integer [ref: > job_types.job_type_id]
+  title varchar
+  description text
+  budget decimal
+  preferred_date date
+  preferred_time time
+  duration_hours decimal
+  location varchar
+  focus_area varchar
+  requirements text
+  status varchar [note: 'open, in_progress, completed, cancelled']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table job_applications {
+  application_id integer [primary key]
+  job_id integer [ref: > jobs.job_id]
+  trainer_id integer [ref: > users.user_id]
+  proposal_message text
+  proposed_rate decimal
+  availability text
+  status varchar [note: 'pending, accepted, rejected']
+  applied_at timestamp [default: `now()`]
+}
+
+Table bookings {
+  booking_id integer [primary key]
+  job_id integer [ref: > jobs.job_id]
+  trainee_id integer [ref: > users.user_id]
+  trainer_id integer [ref: > users.user_id]
+  scheduled_date date
+  scheduled_time time
+  duration decimal
+  location varchar
+  final_rate decimal
+  status varchar [note: 'scheduled, completed, cancelled, no_show']
+  created_at timestamp [default: `now()`]
+}
+
+Table reviews {
+  review_id integer [primary key]
+  booking_id integer [ref: > bookings.booking_id]
+  reviewer_id integer [ref: > users.user_id]
+  reviewee_id integer [ref: > users.user_id]
+  rating integer [note: '1-5 scale']
+  comment text
+  created_at timestamp [default: `now()`]
+}
+
+Table payments {
+  payment_id integer [primary key]
+  booking_id integer [ref: > bookings.booking_id]
+  payer_id integer [ref: > users.user_id]
+  payee_id integer [ref: > users.user_id]
+  amount decimal
+  payment_method varchar
+  transaction_status varchar [note: 'pending, completed, failed, refunded']
+  stripe_payment_id varchar
+  created_at timestamp [default: `now()`]
+}
+
+Table messages {
+  message_id integer [primary key]
+  job_id integer [ref: > jobs.job_id]
+  sender_id integer [ref: > users.user_id]
+  receiver_id integer [ref: > users.user_id]
+  message_content text
+  sent_at timestamp [default: `now()`]
+  read_at timestamp
+}
