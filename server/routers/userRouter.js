@@ -1,17 +1,17 @@
 const router = require("express").Router();
-const User = require("../models/userModel");
+const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+const prisma = new PrismaClient();
+
 router.get("/", async (req, res) => {
     console.log("test");
-    res
-    .status(200);
+    res.status(200).send();
 });
 
 //Register
 router.post("/", async (req, res) => {
-
     try {
         const { email, password, passwordVerify } = req.body;
 
@@ -31,26 +31,31 @@ router.post("/", async (req, res) => {
                 .status(400)
                 .json({errorMessage: "Make sure your passwords match."});
 
-        const existingUser = await User.findOne({email: email});
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({
+            where: { email: email }
+        });
 
         if (existingUser)
             return res
                 .status(400)
-                .json({errorMessage: "This email is already ascociated with an account."});
+                .json({errorMessage: "This email is already associated with an account."});
 
         //hash password
         const salt = await bcrypt.genSalt();
         const passwordHash = await bcrypt.hash(password, salt);
 
         // create user
-        const newUser = new User({
-            email, passwordHash
+        const savedUser = await prisma.user.create({
+            data: {
+                email,
+                passwordHash
+            }
         });
 
-        const savedUser = await newUser.save();
         //login
         const token = jwt.sign({
-            user: savedUser._id
+            user: savedUser.id  // Note: Prisma uses 'id' not '_id'
         }, process.env.JWT_SECRET);
 
         //send http only cookie
@@ -77,14 +82,17 @@ router.post("/login", async (req, res) => {
                 .status(400)
                 .json({errorMessage: "Please enter the required fields."});
 
-        const existingUser = await User.findOne({email});
+        // Find user by email
+        const existingUser = await prisma.user.findUnique({
+            where: { email }
+        });
 
         if (!existingUser)
             return res
                 .status(401)
                 .json({errorMessage: "Wrong email or password."});
 
-        const passwordCorrect =  await bcrypt.compare(password, existingUser.passwordHash);
+        const passwordCorrect = await bcrypt.compare(password, existingUser.passwordHash);
 
         if (!passwordCorrect)
             return res
@@ -93,7 +101,7 @@ router.post("/login", async (req, res) => {
 
          //login
          const token = jwt.sign({
-            user: existingUser._id,
+            user: existingUser.id,  // Note: Prisma uses 'id' not '_id'
         },
         process.env.JWT_SECRET);
 
