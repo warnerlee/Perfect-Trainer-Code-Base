@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
@@ -22,14 +21,6 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.listen(PORT, () => console.log(`server started on port: ${PORT}`));
-
-mongoose.connect(process.env.MDB_CONNECT)
-  .then(() => {
-    console.log('Connected to MongoDB');
-  })
-  .catch((error) => {
-    console.error('Error connecting to MongoDB:', error.message);
-  });
 
 app.get("/ping", (req, res) => {
     res.send("ping response")

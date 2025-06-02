@@ -1,22 +1,23 @@
 const router = require("express").Router();
-const Customer = require("../models/customerModel");
 const auth = require("../middleware/auth");
-
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 router.post("/", auth, async (req, res) => {
     try {
 
         const {name} = req.body;
 
-        const newCustomer = new Customer({
-            name
-        });
 
-        const savedCustomer = await newCustomer.save();
+        const savedCustomer = await prisma.customer.create({
+            data: {
+                name
+            }
+        })
 
         res.json(savedCustomer);
 
-    } catch (error) {
+    } catch (err) {
         console.error(err);
         res.status(500).send();
     }
@@ -24,7 +25,7 @@ router.post("/", auth, async (req, res) => {
 
 router.get("/", auth, async (req, res) => {
     try {
-        const customers = await Customer.find();
+        const customers = await prisma.customer.findMany();
         res.json(customers);
     } catch (err) {
         console.error(err);
