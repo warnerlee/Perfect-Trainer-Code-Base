@@ -1,8 +1,14 @@
 // db.js
 const { Pool } = require('pg');
+const dotenv = require("dotenv");
 
+dotenv.config();
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    user: process.env.DBUSER,
+    host: process.env.DBHOST,
+    database: process.env.DB,
+    password: process.env.DBPASSWORD,
+    port: process.env.PORT,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     max: 10,
     idleTimeoutMillis: 30000,

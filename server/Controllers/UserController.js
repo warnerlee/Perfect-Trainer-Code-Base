@@ -1,93 +1,46 @@
 // controllers/UserController.js
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const UserModel = require("../Models/UserModel");
+const UserService = require("../Services/userService");
 
 class UserController {
     static async register(req, res) {
         try {
-            const {
-                email, password, passwordVerify,
-                fName, lName, height, weight,
-                gender, type, phoneNum
-            } = req.body;
-
-            // Required field validation
-            if (!email || !password || !passwordVerify || !fName || !lName || !height || !weight || !gender || !type || !phoneNum) {
-                return res.status(400).json({ errorMessage: "All fields are required." });
-            }
-
-            if (password.length < 6)
-                return res.status(400).json({ errorMessage: "Password must be at least 6 characters." });
-
-            if (password !== passwordVerify)
-                return res.status(400).json({ errorMessage: "Make sure your passwords match." });
-
-            // Basic format validation (extend as needed)
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email))
-                return res.status(400).json({ errorMessage: "Invalid email format." });
-
-            if (isNaN(height) || height <= 0)
-                return res.status(400).json({ errorMessage: "Height must be a positive number." });
-
-            if (isNaN(weight) || weight <= 0)
-                return res.status(400).json({ errorMessage: "Weight must be a positive number." });
-
-            // Check if email is already used
-            const existingUser = await UserModel.findByEmail(email);
-            if (existingUser)
-                return res.status(400).json({ errorMessage: "This email is already associated with an account." });
-
-            // Hash password
-            const salt = await bcrypt.genSalt();
-            const passwordHash = await bcrypt.hash(password, salt);
-
-            // Save user
-            const newUser = await UserModel.create({
-                email,
-                passwordHash,
-                fName,
-                lName,
-                height,
-                weight,
-                gender,
-                type,
-                phoneNum
-            });
-
-            // JWT & Cookie
-            const token = jwt.sign({ user: newUser.id }, process.env.JWT_SECRET);
+            const newUser = await UserService.registerUser(req.body);
+            // Generate JWT token
+            const token = UserService.generateToken(newUser);
+            // Set cookie and send response
             res.cookie("token", token, { httpOnly: true }).send();
-
-        } catch (err) {
-            console.error(err);
-            res.status(500).send();
+        } catch (error) {
+            console.error(error);
+            // Handle specific validation errors
+            if (error.message.includes("required") ||
+                error.message.includes("password") ||
+                error.message.includes("email") ||
+                error.message.includes("Height") ||
+                error.message.includes("Weight") ||
+                error.message.includes("already associated")) {
+                return res.status(400).json({ errorMessage: error.message });
+            }
+            // Handle server errors
+            res.status(500).json({ errorMessage: "Internal server error" });
         }
     }
 
     static async login(req, res) {
         try {
             const { email, password } = req.body;
-
-            if (!email || !password)
-                return res.status(400).json({ errorMessage: "Please enter the required fields." });
-
-            const user = await UserModel.findByEmail(email);
-            if (!user)
-                return res.status(401).json({ errorMessage: "Wrong email or password." });
-
-            const passwordCorrect = await bcrypt.compare(password, user.passwordhash); // lowercase field
-
-            if (!passwordCorrect)
-                return res.status(401).json({ errorMessage: "Wrong email or password." });
-
-            const token = jwt.sign({ user: user.id }, process.env.JWT_SECRET);
+            const user = await UserService.loginUser(email, password);
+            // Generate JWT token
+            const token = UserService.generateToken(user);
+            // Set cookie and send response
             res.cookie("token", token, { httpOnly: true }).send();
-
-        } catch (err) {
-            console.error(err);
-            res.status(500).send();
+        } catch (error) {
+            console.error(error);
+            // Handle authentication errors
+            if (error.message.includes("required") || error.message.includes("Wrong")) {
+                return res.status(401).json({ errorMessage: error.message });
+            }
+            // Handle server errors
+            res.status(500).json({ errorMessage: "Internal server error" });
         }
     }
 
@@ -103,11 +56,27 @@ class UserController {
             const token = req.cookies.token;
             if (!token) return res.json(false);
 
-            jwt.verify(token, process.env.JWT_SECRET);
-            res.send(true);
-        } catch (err) {
-            console.error(err);
+            const isValid = UserService.isTokenValid(token);
+            res.json(isValid);
+        } catch (error) {
+            console.error(error);
             res.json(false);
+        }
+    }
+
+    static async updateUser(req, res) {
+        try {
+            const token = req.cookies.token;
+            const updates = req.body;
+            const result = await UserService.updateUser(token, updates);
+            
+            res.status(200).json({
+                message: "User updated successfully",
+                user: result
+            });
+        } catch (error) {
+            console.error("Failed to update user: ", error);
+            res.status(400).json({ errorMessage: error.message });
         }
     }
 

@@ -68,3 +68,17 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     gracefulShutdown('unhandledRejection');
 });
+
+// In index.js, after importing db
+const testConnection = async () => {
+    try {
+        await db.query('SELECT NOW()');
+        console.log('✅ Database connection tested successfully');
+    } catch (err) {
+        console.error('❌ Database connection test failed:', err);
+        process.exit(1);
+    }
+};
+
+// Call it before starting the server
+testConnection();
